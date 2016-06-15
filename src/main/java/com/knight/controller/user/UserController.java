@@ -1,9 +1,11 @@
 package com.knight.controller.user;
 
 import com.knight.entity.account.VideoAccount;
+import com.knight.entity.group.AccountGroup;
 import com.knight.entity.user.User;
 import com.knight.entity.user.UserLoginLog;
 import com.knight.repository.account.VideoAccountRepository;
+import com.knight.repository.group.AccountGroupRepository;
 import com.knight.repository.user.UserLoginLogRepository;
 import com.knight.repository.user.UserRepository;
 import org.apache.commons.codec.digest.DigestUtils;
@@ -34,6 +36,9 @@ public class UserController {
     @Autowired
     VideoAccountRepository videoAccountRepository;
 
+    @Autowired
+    AccountGroupRepository accountGroupRepository;
+
 
     /**
      * 注册
@@ -62,7 +67,6 @@ public class UserController {
             user.setAccount(account);
             user.setPassword(DigestUtils.md5Hex(password));
             userRepository.save(user);
-
         }
 
         res.put("success",1);
@@ -83,12 +87,16 @@ public class UserController {
         User user = userRepository.findByAccount(account);
 
         if(user==null){
-            res.put("success",0);
-            res.put("message","该账号不存在");
-            return res;
+            user = new User();
+            user.setAccount(account);
+            user.setPassword(password);
+            userRepository.save(user);
+//            res.put("success",0);
+//            res.put("message","该账号不存在");
+//            return res;
         }
 
-        user = userRepository.findByAccountAndPasswordAndRemoved(account, DigestUtils.md5Hex(password), false);
+        user = userRepository.findByAccountAndPasswordAndRemoved(account, password, false);
 
         if(user!=null){
             user.setAccessToken(UUID.randomUUID().toString());
@@ -173,6 +181,7 @@ public class UserController {
         return res;
     }
 
+    @Transactional
     @RequestMapping("getIkanAccount")
     public Map<String ,Object> getIkanAccount(
             @RequestParam int website,
@@ -186,14 +195,46 @@ public class UserController {
         if(user!=null){
             Date now = new Date();
             SimpleDateFormat sdf = new SimpleDateFormat("HHmmssSSS");
-            List<VideoAccount> videoAccounts = videoAccountRepository.findByWebsiteType(VideoAccount.WebsiteType.values()[website]);
+            List<AccountGroup> distributed =  accountGroupRepository.findAvailableGroupByUserForType(user, VideoAccount.WebsiteType.values()[website]);
+            if (distributed.size() == 0) {
+                List<AccountGroup> candidates = accountGroupRepository.findAvailableGroupForType(VideoAccount.WebsiteType.values()[website]);
+                AccountGroup candidate = null;
+                if (candidates.size() > 0) {
+                    candidate = candidates.get(0);
+                    switch (candidate.getUnoccupied()) {
+                        case 5:
+                            candidate.setUserOne(user);
+                            break;
+                        case 4:
+                            candidate.setUserTwo(user);
+                            break;
+                        case 3:
+                            candidate.setUserThree(user);
+                            break;
+                        case 2:
+                            candidate.setUserFour(user);
+                            break;
+                        case 1:
+                            candidate.setUserFive(user);
+                            break;
+                    }
+                    candidate.setUnoccupied(candidate.getUnoccupied() - 1);
+                    accountGroupRepository.save(candidate);
+                    distributed.add(candidate);
+                }
 
-            if(videoAccounts.size()>0){
-                VideoAccount videoAccount =  videoAccounts.get(0);
+            }
+            VideoAccount videoAccount = distributed.get(0).getVideoAccount();
+
+            if(videoAccount != null){
+//                VideoAccount videoAccount =  videoAccounts.get(0);
                 res.put("success",1);
                 res.put("account",videoAccount.getAccount());
                 res.put("password",videoAccount.getPassword());
                 res.put("websiteType",videoAccount.getWebsiteType().ordinal());
+            } else {
+                res.put("success",0);
+                res.put("message","暂时没有合适的帐号, 请稍候. ");
             }
         }else{
             res.put("success",0);

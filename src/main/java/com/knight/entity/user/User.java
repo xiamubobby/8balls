@@ -27,6 +27,8 @@ public class User extends AbstractBaseEntity<Long> {
 
     private boolean removed;
 
+    private boolean isVip;
+
 
     public String getAccount() {
         return account;
@@ -82,5 +84,13 @@ public class User extends AbstractBaseEntity<Long> {
 
     public void setRemoved(boolean removed) {
         this.removed = removed;
+    }
+
+    public boolean isVip() {
+        return isVip;
+    }
+
+    public void setVip(boolean vip) {
+        isVip = vip;
     }
 }

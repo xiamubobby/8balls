@@ -1,14 +1,18 @@
 package com.knight.controller.user;
 
+import com.knight.controller.IkanExceptionHandler;
+import com.knight.entity.account.RandomAccount;
 import com.knight.entity.account.VideoAccount;
 import com.knight.entity.group.AccountGroup;
 import com.knight.entity.user.User;
 import com.knight.entity.user.UserLoginLog;
+import com.knight.repository.account.RandomAccountRepository;
 import com.knight.repository.account.VideoAccountRepository;
 import com.knight.repository.group.AccountGroupRepository;
 import com.knight.repository.user.UserLoginLogRepository;
 import com.knight.repository.user.UserRepository;
 import org.apache.commons.codec.digest.DigestUtils;
+import org.springframework.beans.factory.ObjectFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -17,6 +21,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.validation.constraints.NotNull;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
@@ -38,6 +43,9 @@ public class UserController {
 
     @Autowired
     AccountGroupRepository accountGroupRepository;
+
+    @Autowired
+    RandomAccountRepository randomAccountRepository;
 
 
     /**
@@ -136,6 +144,12 @@ public class UserController {
             user.setAccessToken("");
             user.setAccessTime(0);
             userRepository.save(user);
+            List<AccountGroup> groups = accountGroupRepository.findByUsingUser(user);
+            if (groups.size() >0) {
+                for (AccountGroup group : groups) {
+                    group.setUsingUser(null);
+                }
+            }
         }
 
         res.put("success",1);
@@ -189,15 +203,36 @@ public class UserController {
 
         Map<String, Object> res = new HashMap<>();
 
+        if (accessToken.isEmpty()) {
+            res.put("success", 1);
+            return res;
+        }
 
         User user = userRepository.findByAccessToken(accessToken);
 
-        if(user!=null){
+        if (!user.isVip()) {
+            res.put("success", 0);
+            res.put("message", "请先成为魏啊婆.");
+            return res;
+        }
+
+        VideoAccount.WebsiteType[] types = VideoAccount.WebsiteType.values();
+
+        VideoAccount videoAccount = null;
+
+        if(user != null){
+            List<AccountGroup> groups = accountGroupRepository.findByUsingUser(user);
+            if (groups.size() >0) {
+                for (AccountGroup group : groups) {
+                    group.setUsingUser(null);
+                }
+            }
             Date now = new Date();
             SimpleDateFormat sdf = new SimpleDateFormat("HHmmssSSS");
-            List<AccountGroup> distributed =  accountGroupRepository.findAvailableGroupByUserForType(user, VideoAccount.WebsiteType.values()[website]);
+            List<AccountGroup> distributed =  accountGroupRepository.findAvailableGroupByUserForType(user, types[website]);
+            AccountGroup distributedGroup = null;
             if (distributed.size() == 0) {
-                List<AccountGroup> candidates = accountGroupRepository.findAvailableGroupForType(VideoAccount.WebsiteType.values()[website]);
+                List<AccountGroup> candidates = accountGroupRepository.findAvailableGroupForType(types[website]);
                 AccountGroup candidate = null;
                 if (candidates.size() > 0) {
                     candidate = candidates.get(0);
@@ -221,13 +256,31 @@ public class UserController {
                     candidate.setUnoccupied(candidate.getUnoccupied() - 1);
                     accountGroupRepository.save(candidate);
                     distributed.add(candidate);
+                    distributedGroup = candidate;
                 }
 
             }
-            VideoAccount videoAccount = distributed.get(0).getVideoAccount();
+            try {
+                videoAccount = distributed.get(0).getVideoAccount();
+            } catch (Exception ignored) {}
+            RandomAccount.WebsiteType[] randomTypes = RandomAccount.WebsiteType.values();
+            if (distributedGroup != null && distributedGroup.getUsingUser() != null) {
+                List<RandomAccount> randomAccounts = randomAccountRepository.findByWebsiteTypeAndUsed(randomTypes[website], false);
+                RandomAccount randomAccount = null;
+                if (randomAccounts.size() > 0) {
+                    randomAccount = randomAccounts.get(0);
+                }
+                if (randomAccount != null) {
+                    videoAccount = new VideoAccount();
+                    videoAccount.setAccount(randomAccount.getAccount());
+                    videoAccount.setPassword(randomAccount.getPassword());
+                    videoAccount.setWebsiteType(types[randomAccount.getWebsiteType().ordinal()]);
+                    randomAccount.setUsed(true);
+                    randomAccountRepository.save(randomAccount);
+                }
+            }
 
-            if(videoAccount != null){
-//                VideoAccount videoAccount =  videoAccounts.get(0);
+            if(videoAccount != null) {
                 res.put("success",1);
                 res.put("account",videoAccount.getAccount());
                 res.put("password",videoAccount.getPassword());
@@ -236,13 +289,44 @@ public class UserController {
                 res.put("success",0);
                 res.put("message","暂时没有合适的帐号, 请稍候. ");
             }
-        }else{
+        } else {
             res.put("success",0);
             res.put("message","请重新登陆!");
             return res;
         }
 
         return res;
+    }
+
+    @RequestMapping("switchVip")
+    public Map<String, Object> switchVip(@RequestHeader("accessToken") String accessToken) {
+        Map<String, Object> res = new HashMap<>();
+        User user = userRepository.findByAccessToken(accessToken);
+        if (user != null) {
+            if (user.isVip()) {
+                user.setVip(false);
+                res.put("nowStatus", false);
+            } else {
+                user.setVip(true);
+                res.put("nowStatus", true);
+            }
+        } else {
+            throw new IkanExceptionHandler.UserNotFoundException(accessToken);
+        }
+        userRepository.save(user);
+        res.put("success", 1);
+        return res;
+    }
+
+    private boolean logoutImp(String token) {
+        User toBeLoggedOut = userRepository.findByAccessToken(token);
+        if (toBeLoggedOut != null) {
+            toBeLoggedOut.setAccessToken(null);
+            userRepository.save(toBeLoggedOut);
+            return true;
+        } else {
+            return false;
+        }
     }
 
 

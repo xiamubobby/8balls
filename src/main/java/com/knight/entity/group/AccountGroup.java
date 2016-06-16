@@ -32,6 +32,10 @@ public class AccountGroup extends AbstractPersistable<Long> {
     @JoinColumn(name = "user_five")
     private User userFive;
     private int unoccupied;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "using_user")
+    private User usingUser;
+
 
     public int getUnoccupied() {
         return unoccupied;
@@ -95,5 +99,13 @@ public class AccountGroup extends AbstractPersistable<Long> {
 
     public void setUserFive(User userFive) {
         this.userFive = userFive;
+    }
+
+    public User getUsingUser() {
+        return usingUser;
+    }
+
+    public void setUsingUser(User usingUser) {
+        this.usingUser = usingUser;
     }
 }

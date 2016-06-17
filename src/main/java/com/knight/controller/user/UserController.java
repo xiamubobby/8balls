@@ -332,17 +332,17 @@ public class UserController {
     }
 
     private void clearAccountUseState(User user) {
-        AccountGroup accountGroups = accountGroupRepository.findByUsingUser(user);
-//        List<RandomAccount> randomAccounts = randomAccountRepository.findByUsing(user);
-//        for (AccountGroup accountGroup : accountGroupRepository.findByUsingUser(user)) {
-//            accountGroup.setUsingUser(null);
-//            accountGroupRepository.save(accountGroup);
-//        }
-//        for (RandomAccount randomAccount : randomAccountRepository.findByUsing(user)) {
-//            randomAccount.setUsed(false);
-//            randomAccount.setUsing(null);
-//            randomAccountRepository.save(randomAccount);
-//        }
+        List<AccountGroup> accountGroups = accountGroupRepository.findByUsingUser(user);
+        List<RandomAccount> randomAccounts = randomAccountRepository.findByUsing(user);
+        for (AccountGroup accountGroup : accountGroupRepository.findByUsingUser(user)) {
+            accountGroup.setUsingUser(null);
+            accountGroupRepository.save(accountGroup);
+        }
+        for (RandomAccount randomAccount : randomAccountRepository.findByUsing(user)) {
+            randomAccount.setUsed(false);
+            randomAccount.setUsing(null);
+            randomAccountRepository.save(randomAccount);
+        }
     }
 
 

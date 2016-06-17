@@ -30,6 +30,7 @@ public interface AccountGroupRepository extends MyRepository<AccountGroup, Long>
     @Query(value = "SELECT account_group from AccountGroup account_group WHERE ((account_group.userOne = :user or account_group.userTwo = :user or account_group.userThree = :user or account_group.userFour = :user or account_group.userFive = :user) and (SELECT video_account.websiteType from VideoAccount video_account WHERE video_account.id = account_group.account.id) = :type)")
     List<AccountGroup> findAvailableGroupByUserForType(@Param("user") User user, @Param("type") VideoAccount.WebsiteType type);
 
-    AccountGroup findByUsingUser(User usingUser);
+    @Query(value = "SELECT account_group from AccountGroup account_group WHERE account_group.usingUser = :usingUser")
+    List<AccountGroup> findByUsingUser(@Param("usingUser") User usingUser);
 
 }

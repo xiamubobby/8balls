@@ -1,6 +1,7 @@
 package com.knight.repository.account;
 
 import com.knight.entity.account.RandomAccount;
+import com.knight.entity.user.User;
 import com.wonders.xlab.framework.repository.MyRepository;
 import org.springframework.data.jpa.repository.Lock;
 
@@ -14,4 +15,6 @@ public interface RandomAccountRepository extends MyRepository<RandomAccount, Lon
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     List<RandomAccount> findByWebsiteTypeAndUsed(RandomAccount.WebsiteType websiteType, boolean used);
+
+    List<RandomAccount> findByUsing(User usingUser);
 }

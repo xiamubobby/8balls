@@ -1,8 +1,11 @@
 package com.knight.entity.account;
 
+import com.knight.entity.user.User;
 import com.wonders.xlab.framework.entity.AbstractBaseEntity;
 
 import javax.persistence.Entity;
+import javax.persistence.FetchType;
+import javax.persistence.ManyToOne;
 import javax.persistence.Table;
 
 /**
@@ -17,6 +20,9 @@ public class RandomAccount extends AbstractBaseEntity<Long> {
     private String password;
 
     private boolean used;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    private User using;
 
     public enum WebsiteType{
         YOUKU_TUDOU,IQIYI,QQ,SOHU,LE
@@ -54,5 +60,13 @@ public class RandomAccount extends AbstractBaseEntity<Long> {
 
     public void setUsed(boolean used) {
         this.used = used;
+    }
+
+    public User getUsing() {
+        return using;
+    }
+
+    public void setUsing(User using) {
+        this.using = using;
     }
 }

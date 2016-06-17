@@ -14,10 +14,33 @@ import java.util.Map;
  */
 @ControllerAdvice
 public class IkanExceptionHandler {
-    @ResponseStatus(value= HttpStatus.OK)
-    public static class UserNotFoundException extends RuntimeException {
+
+    public static class BaseIkanException extends RuntimeException {
         private String tag;
-        public UserNotFoundException(String tag) {}
+        public BaseIkanException(String tag) {
+            this.tag = tag;
+        }
+    }
+    @ResponseStatus(value= HttpStatus.OK)
+    public static class UserNotFoundException extends BaseIkanException {
+        public UserNotFoundException(String tag) {
+            super(tag);
+        }
+    }
+
+    @ResponseStatus(value= HttpStatus.OK)
+    public static class UserNotVipException extends BaseIkanException {
+        public UserNotVipException(String tag) {
+            super(tag);
+        }
+    }
+
+    @ResponseStatus(value = HttpStatus.OK)
+    public static class NoAvailableAccountException extends BaseIkanException {
+
+        public NoAvailableAccountException(String tag) {
+            super(tag);
+        }
     }
 
     @ExceptionHandler(UserNotFoundException.class)
@@ -28,4 +51,24 @@ public class IkanExceptionHandler {
         res.put("message","查无此用户");
         return res;
     }
+
+    @ExceptionHandler(UserNotVipException.class)
+    @ResponseBody
+    public Object handleNotVip() {
+        Map<String, Object> res = new HashMap<>();
+        res.put("success",0);
+        res.put("message","请先成为魏阿婆.");
+        return res;
+    }
+
+    @ExceptionHandler(IkanExceptionHandler.NoAvailableAccountException.class)
+    @ResponseBody
+    public Object handleNoAvailableAccount() {
+        Map<String, Object> res = new HashMap<>();
+        res.put("success",0);
+        res.put("message","暂时没有靠谱的帐号可分配.");
+        return res;
+    }
+
+
 }

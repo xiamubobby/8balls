@@ -1,6 +1,7 @@
 package com.knight.controller.user;
 
 import com.knight.controller.IkanExceptionHandler;
+import com.knight.dto.UserInfo;
 import com.knight.entity.account.RandomAccount;
 import com.knight.entity.account.VideoAccount;
 import com.knight.entity.group.AccountGroup;
@@ -15,10 +16,7 @@ import org.apache.commons.codec.digest.DigestUtils;
 import org.springframework.beans.factory.ObjectFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.validation.constraints.NotNull;
@@ -46,6 +44,10 @@ public class UserController {
 
     @Autowired
     RandomAccountRepository randomAccountRepository;
+
+    static VideoAccount.WebsiteType[] types = VideoAccount.WebsiteType.values();
+
+    static RandomAccount.WebsiteType[] randomTypes = RandomAccount.WebsiteType.values();
 
 
     /**
@@ -140,16 +142,11 @@ public class UserController {
 
         User user = userRepository.findByAccessToken(accessToken);
 
-        if(user!=null){
+        if(user != null){
+            clearAccountUseState(user);
             user.setAccessToken("");
             user.setAccessTime(0);
             userRepository.save(user);
-            List<AccountGroup> groups = accountGroupRepository.findByUsingUser(user);
-            if (groups.size() >0) {
-                for (AccountGroup group : groups) {
-                    group.setUsingUser(null);
-                }
-            }
         }
 
         res.put("success",1);
@@ -210,89 +207,84 @@ public class UserController {
 
         User user = userRepository.findByAccessToken(accessToken);
 
-        if (!user.isVip()) {
-            res.put("success", 0);
-            res.put("message", "请先成为魏啊婆.");
-            return res;
-        }
-
-        VideoAccount.WebsiteType[] types = VideoAccount.WebsiteType.values();
+        if (user == null) throw new IkanExceptionHandler.UserNotFoundException(accessToken);
+        if (!user.isVip()) throw new IkanExceptionHandler.UserNotVipException(accessToken);
 
         VideoAccount videoAccount = null;
 
-        if(user != null){
-            List<AccountGroup> groups = accountGroupRepository.findByUsingUser(user);
-            if (groups.size() >0) {
-                for (AccountGroup group : groups) {
-                    group.setUsingUser(null);
-                }
-            }
-            Date now = new Date();
-            SimpleDateFormat sdf = new SimpleDateFormat("HHmmssSSS");
-            List<AccountGroup> distributed =  accountGroupRepository.findAvailableGroupByUserForType(user, types[website]);
-            AccountGroup distributedGroup = null;
-            if (distributed.size() == 0) {
-                List<AccountGroup> candidates = accountGroupRepository.findAvailableGroupForType(types[website]);
-                AccountGroup candidate = null;
-                if (candidates.size() > 0) {
-                    candidate = candidates.get(0);
-                    switch (candidate.getUnoccupied()) {
-                        case 5:
-                            candidate.setUserOne(user);
-                            break;
-                        case 4:
-                            candidate.setUserTwo(user);
-                            break;
-                        case 3:
-                            candidate.setUserThree(user);
-                            break;
-                        case 2:
-                            candidate.setUserFour(user);
-                            break;
-                        case 1:
-                            candidate.setUserFive(user);
-                            break;
-                    }
-                    candidate.setUnoccupied(candidate.getUnoccupied() - 1);
-                    accountGroupRepository.save(candidate);
-                    distributed.add(candidate);
-                    distributedGroup = candidate;
-                }
+        clearAccountUseState(user);
 
-            }
-            try {
-                videoAccount = distributed.get(0).getVideoAccount();
-            } catch (Exception ignored) {}
-            RandomAccount.WebsiteType[] randomTypes = RandomAccount.WebsiteType.values();
-            if (distributedGroup != null && distributedGroup.getUsingUser() != null) {
-                List<RandomAccount> randomAccounts = randomAccountRepository.findByWebsiteTypeAndUsed(randomTypes[website], false);
-                RandomAccount randomAccount = null;
-                if (randomAccounts.size() > 0) {
-                    randomAccount = randomAccounts.get(0);
-                }
-                if (randomAccount != null) {
-                    videoAccount = new VideoAccount();
-                    videoAccount.setAccount(randomAccount.getAccount());
-                    videoAccount.setPassword(randomAccount.getPassword());
-                    videoAccount.setWebsiteType(types[randomAccount.getWebsiteType().ordinal()]);
-                    randomAccount.setUsed(true);
-                    randomAccountRepository.save(randomAccount);
-                }
-            }
+        boolean useRandom = false;
+//        Date now = new Date();
+//        SimpleDateFormat sdf = new SimpleDateFormat("HHmmssSSS");
+        List<AccountGroup> distributed =  accountGroupRepository.findAvailableGroupByUserForType(user, types[website]);
 
-            if(videoAccount != null) {
-                res.put("success",1);
-                res.put("account",videoAccount.getAccount());
-                res.put("password",videoAccount.getPassword());
-                res.put("websiteType",videoAccount.getWebsiteType().ordinal());
+        if (distributed.size() == 0) {
+            List<AccountGroup> candidates = accountGroupRepository.findAvailableGroupForType(types[website]);
+            AccountGroup candidate = null;
+            if (candidates.size() > 0) {
+                candidate = candidates.get(0);
+                switch (candidate.getUnoccupied()) {
+                    case 5:
+                        candidate.setUserOne(user);
+                        break;
+                    case 4:
+                        candidate.setUserTwo(user);
+                        break;
+                    case 3:
+                        candidate.setUserThree(user);
+                        break;
+                    case 2:
+                        candidate.setUserFour(user);
+                        break;
+                    case 1:
+                        candidate.setUserFive(user);
+                        break;
+                }
+                candidate.setUnoccupied(candidate.getUnoccupied() - 1);
+                accountGroupRepository.save(candidate);
+                distributed.add(candidate);
             } else {
-                res.put("success",0);
-                res.put("message","暂时没有合适的帐号, 请稍候. ");
+                useRandom = true;
             }
+
+        } else {
+            if (distributed.get(0).getUsingUser() != null && distributed.get(0).getUsingUser() != user) {
+                useRandom = true;
+            } else {
+                try {
+                    videoAccount = distributed.get(0).getVideoAccount();
+                    distributed.get(0).setUsingUser(user);
+                    accountGroupRepository.save(distributed.get(0));
+                } catch (Exception ignored) {}
+            }
+        }
+
+        if (useRandom) {
+            List<RandomAccount> randomAccounts = randomAccountRepository.findByWebsiteTypeAndUsed(randomTypes[website], false);
+            RandomAccount randomAccount = null;
+            if (randomAccounts.size() > 0) {
+                randomAccount = randomAccounts.get(0);
+            } else throw new IkanExceptionHandler.NoAvailableAccountException(accessToken);
+            if (randomAccount != null) {
+                videoAccount = new VideoAccount();
+                videoAccount.setAccount(randomAccount.getAccount());
+                videoAccount.setPassword(randomAccount.getPassword());
+                videoAccount.setWebsiteType(types[randomAccount.getWebsiteType().ordinal()]);
+                randomAccount.setUsed(true);
+                randomAccount.setUsing(user);
+                randomAccountRepository.save(randomAccount);
+            }
+        }
+
+        if(videoAccount != null) {
+            res.put("success",1);
+            res.put("account",videoAccount.getAccount());
+            res.put("password",videoAccount.getPassword());
+            res.put("websiteType",videoAccount.getWebsiteType().ordinal());
         } else {
             res.put("success",0);
-            res.put("message","请重新登陆!");
-            return res;
+            res.put("message","暂时没有合适的帐号, 请稍候. ");
         }
 
         return res;
@@ -318,6 +310,16 @@ public class UserController {
         return res;
     }
 
+    @RequestMapping("getUserInfo")
+    public @ResponseBody UserInfo getUserInfo(@RequestHeader("accessToken") String accessToken) {
+        UserInfo ret = new UserInfo();
+        User user =  userRepository.findByAccessToken(accessToken);
+        if (user == null) throw new IkanExceptionHandler.UserNotFoundException(accessToken);
+        ret.setSuccess(1);
+        ret.setVip(user.isVip());
+        return ret;
+    }
+
     private boolean logoutImp(String token) {
         User toBeLoggedOut = userRepository.findByAccessToken(token);
         if (toBeLoggedOut != null) {
@@ -327,6 +329,20 @@ public class UserController {
         } else {
             return false;
         }
+    }
+
+    private void clearAccountUseState(User user) {
+        AccountGroup accountGroups = accountGroupRepository.findByUsingUser(user);
+//        List<RandomAccount> randomAccounts = randomAccountRepository.findByUsing(user);
+//        for (AccountGroup accountGroup : accountGroupRepository.findByUsingUser(user)) {
+//            accountGroup.setUsingUser(null);
+//            accountGroupRepository.save(accountGroup);
+//        }
+//        for (RandomAccount randomAccount : randomAccountRepository.findByUsing(user)) {
+//            randomAccount.setUsed(false);
+//            randomAccount.setUsing(null);
+//            randomAccountRepository.save(randomAccount);
+//        }
     }
 
 

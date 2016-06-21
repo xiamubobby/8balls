@@ -1,7 +1,7 @@
 package com.knight.controller.user;
 
 import com.knight.controller.IkanExceptionHandler;
-import com.knight.dto.UserInfo;
+import com.knight.dto.responsebody.UserInfo;
 import com.knight.entity.account.RandomAccount;
 import com.knight.entity.account.VideoAccount;
 import com.knight.entity.group.AccountGroup;
@@ -13,13 +13,11 @@ import com.knight.repository.group.AccountGroupRepository;
 import com.knight.repository.user.UserLoginLogRepository;
 import com.knight.repository.user.UserRepository;
 import org.apache.commons.codec.digest.DigestUtils;
-import org.springframework.beans.factory.ObjectFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
-import javax.validation.constraints.NotNull;
 import java.text.SimpleDateFormat;
 import java.util.*;
 

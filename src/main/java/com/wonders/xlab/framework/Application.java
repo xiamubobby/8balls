@@ -18,12 +18,17 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter;
+import springfox.documentation.builders.PathSelectors;
+import springfox.documentation.spi.DocumentationType;
+import springfox.documentation.spring.web.plugins.Docket;
+import springfox.documentation.swagger2.annotations.EnableSwagger2;
 
 @SpringBootApplication
 @EnableJpaAuditing
@@ -34,6 +39,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter
 @EnableScheduling
 @EntityScan({"${app.basePackages}"})
 @ComponentScan({"${app.basePackages}"})
+@EnableSwagger2
 public class Application extends SpringBootServletInitializer {
 
     @Value("${jackson.indent.output}")
@@ -67,6 +73,16 @@ public class Application extends SpringBootServletInitializer {
                 .serializationInclusion(JsonInclude.Include.NON_NULL);
     }
 
+    @Bean
+    public Docket swaggerSpringfoxDocket() {
+        Docket swaggerSpringMvcPlugin = new Docket(DocumentationType.SWAGGER_2)
+//                .apiInfo(apiInfo())
+                .genericModelSubstitutes(ResponseEntity.class)
+                .select()
+                .paths(PathSelectors.any())
+                .build();
+        return swaggerSpringMvcPlugin;
+    }
 //    @Bean
 //    public Integer port() {
 //        return SocketUtils.findAvailableTcpPort();

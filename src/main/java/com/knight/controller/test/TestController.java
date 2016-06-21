@@ -12,6 +12,7 @@ import com.knight.repository.account.RandomAccountRepository;
 import com.knight.repository.account.VideoAccountRepository;
 import com.knight.repository.group.AccountGroupRepository;
 import com.knight.repository.user.UserRepository;
+import io.swagger.annotations.ApiOperation;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.hibernate.engine.query.spi.NativeQueryInterpreter;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,6 +39,7 @@ public class TestController {
 
     @Transactional
     @RequestMapping("test1")
+    @ApiOperation(value = "vvv")
     public Map<String, Object> test1() {
         VideoAccount.WebsiteType[] ss = VideoAccount.WebsiteType.values();
         System.out.println(ss.length);

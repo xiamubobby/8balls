@@ -12,6 +12,7 @@ import com.knight.repository.account.VideoAccountRepository;
 import com.knight.repository.group.AccountGroupRepository;
 import com.knight.repository.user.UserLoginLogRepository;
 import com.knight.repository.user.UserRepository;
+import io.swagger.annotations.ApiOperation;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
@@ -308,7 +309,8 @@ public class UserController {
         return res;
     }
 
-    @RequestMapping("getUserInfo")
+    @RequestMapping(value = "getUserInfo", method = {RequestMethod.GET, RequestMethod.POST})
+    @ApiOperation(value = "ttt", response = UserInfo.class, responseContainer = "List")
     public @ResponseBody UserInfo getUserInfo(@RequestHeader("accessToken") String accessToken) {
         UserInfo ret = new UserInfo();
         User user =  userRepository.findByAccessToken(accessToken);

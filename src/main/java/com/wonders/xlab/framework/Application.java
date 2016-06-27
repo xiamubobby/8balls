@@ -21,14 +21,20 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
 import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter;
 import springfox.documentation.builders.PathSelectors;
+import springfox.documentation.service.ResponseMessage;
 import springfox.documentation.spi.DocumentationType;
 import springfox.documentation.spring.web.plugins.Docket;
 import springfox.documentation.swagger2.annotations.EnableSwagger2;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 @SpringBootApplication
 @EnableJpaAuditing
@@ -80,7 +86,9 @@ public class Application extends SpringBootServletInitializer {
                 .genericModelSubstitutes(ResponseEntity.class)
                 .select()
                 .paths(PathSelectors.any())
-                .build();
+                .build()
+                .globalResponseMessage(RequestMethod.GET, Collections.<ResponseMessage>emptyList())
+                .globalResponseMessage(RequestMethod.POST, Collections.<ResponseMessage>emptyList());
         return swaggerSpringMvcPlugin;
     }
 //    @Bean

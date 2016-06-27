@@ -193,6 +193,7 @@ public class UserController {
 
     @Transactional
     @RequestMapping("getIkanAccount")
+    @ApiOperation()
     public Map<String ,Object> getIkanAccount(
             @RequestParam int website,
             @RequestHeader String accessToken){
@@ -310,7 +311,7 @@ public class UserController {
     }
 
     @RequestMapping(value = "getUserInfo", method = {RequestMethod.GET, RequestMethod.POST})
-    @ApiOperation(value = "ttt", response = UserInfo.class, responseContainer = "List")
+//    @ApiOperation(value = "ttt", response = UserInfo.class, responseContainer = "List")
     public @ResponseBody UserInfo getUserInfo(@RequestHeader("accessToken") String accessToken) {
         UserInfo ret = new UserInfo();
         User user =  userRepository.findByAccessToken(accessToken);
